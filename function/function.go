@@ -354,6 +354,20 @@ func (f *Function) DeployConfigAndCode(zip []byte) error {
 		return err
 	}
 
+	if f.Concurrency.Set {
+		_, err = f.Service.PutFunctionConcurrency(&lambda.PutFunctionConcurrencyInput{
+			FunctionName:                 &f.FunctionName,
+			ReservedConcurrentExecutions: &f.Concurrency.Value,
+		})
+	} else {
+		_, err = f.Service.DeleteFunctionConcurrency(&lambda.DeleteFunctionConcurrencyInput{
+			FunctionName: &f.FunctionName,
+		})
+	}
+	if err != nil {
+		return err
+	}
+
 	return f.Update(zip)
 }
 
