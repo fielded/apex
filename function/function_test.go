@@ -143,6 +143,20 @@ func TestFunction_Create_edgeFunction(t *testing.T) {
 
 	assert.Nil(t, err)
 }
+func TestFunction_Open_detectConcurrency(t *testing.T) {
+	fn := &function.Function{
+		Config: function.Config{
+			Memory:  128,
+			Timeout: 3,
+			Role:    "iamrole",
+		},
+		Path: "_fixtures/withConcurrency",
+		Name: "foo",
+		Log:  log.Log,
+	}
+	fn.Open("")
+	assert.Equal(t, int64(10), fn.Concurrency.Value, "they should be equal")
+}
 
 func TestFunction_Delete_success(t *testing.T) {
 	mockCtrl := gomock.NewController(t)

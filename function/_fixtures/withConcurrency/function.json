@@ -1,0 +1,10 @@
+{
+    "name": "test",
+    "description": "test concurrency",
+    "runtime": "nodejs",
+    "timeout": 1,
+    "role": "iamrole",
+    "handler": "index.handle",
+    "concurrency": 10
+  }
+  

@@ -83,6 +83,12 @@ func (e *InvokeError) Error() string {
 	return e.Message
 }
 
+type JSONInt struct {
+	Value int64
+	Valid bool
+	Set   bool
+}
+
 // Config for a Lambda function.
 type Config struct {
 	Description      string            `json:"description"`
@@ -101,6 +107,7 @@ type Config struct {
 	Region           string            `json:"region"`
 	Edge             bool              `json:"edge"`
 	Zip              string            `json:"zip"`
+	Concurrency      JSONInt           `json:"concurrency"`
 }
 
 // Function represents a Lambda function, with configuration loaded
@@ -115,6 +122,26 @@ type Function struct {
 	IgnoreFile   []byte
 	Plugins      []string
 	Alias        string
+}
+
+func (i *JSONInt) UnmarshalJSON(data []byte) error {
+	// If this method was called, the value was set.
+	i.Set = true
+
+	if string(data) == "null" {
+		// The key was set to null
+		i.Valid = false
+		return nil
+	}
+
+	// The key isn't set to null
+	var temp int64
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+	i.Value = temp
+	i.Valid = true
+	return nil
 }
 
 // Open the function.json file and prime the config.
