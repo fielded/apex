@@ -474,6 +474,16 @@ func (f *Function) Create(zip []byte) error {
 		return err
 	}
 
+	if f.Concurrency.Set {
+		_, err = f.Service.PutFunctionConcurrency(&lambda.PutFunctionConcurrencyInput{
+			FunctionName:                 &f.FunctionName,
+			ReservedConcurrentExecutions: &f.Concurrency.Value,
+		})
+		if err != nil {
+			return err
+		}
+	}
+
 	f.Log.WithFields(log.Fields{
 		"version": *created.Version,
 		"name":    f.FunctionName,
