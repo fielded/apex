@@ -849,6 +849,7 @@ func (f *Function) configChanged(config *lambda.GetFunctionOutput) bool {
 		Environment      []string
 		KMSKeyArn        string
 		DeadLetterConfig lambda.DeadLetterConfig
+		Concurrency      JSONInt
 	}
 
 	localConfig := &diffConfig{
@@ -864,6 +865,7 @@ func (f *Function) configChanged(config *lambda.GetFunctionOutput) bool {
 			Subnets:        f.VPC.Subnets,
 			SecurityGroups: f.VPC.SecurityGroups,
 		},
+		Concurrency: f.Concurrency,
 	}
 
 	if f.DeadLetterARN != "" {
@@ -879,6 +881,14 @@ func (f *Function) configChanged(config *lambda.GetFunctionOutput) bool {
 		Role:        *config.Configuration.Role,
 		Runtime:     *config.Configuration.Runtime,
 		Handler:     *config.Configuration.Handler,
+	}
+
+	if config.Concurrency != nil {
+		remoteConfig.Concurrency = JSONInt{
+			Value: *config.Concurrency.ReservedConcurrentExecutions,
+			Valid: true,
+			Set:   true,
+		}
 	}
 
 	if config.Configuration.KMSKeyArn != nil {
