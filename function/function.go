@@ -83,12 +83,6 @@ func (e *InvokeError) Error() string {
 	return e.Message
 }
 
-type JSONInt struct {
-	Value int64
-	Valid bool
-	Set   bool
-}
-
 // Config for a Lambda function.
 type Config struct {
 	Description      string            `json:"description"`
@@ -107,7 +101,7 @@ type Config struct {
 	Region           string            `json:"region"`
 	Edge             bool              `json:"edge"`
 	Zip              string            `json:"zip"`
-	Concurrency      JSONInt           `json:"concurrency"`
+	Concurrency      *int              `json:"concurrency"`
 }
 
 // Function represents a Lambda function, with configuration loaded
@@ -122,26 +116,6 @@ type Function struct {
 	IgnoreFile   []byte
 	Plugins      []string
 	Alias        string
-}
-
-func (i *JSONInt) UnmarshalJSON(data []byte) error {
-	// If this method was called, the value was set.
-	i.Set = true
-
-	if string(data) == "null" {
-		// The key was set to null
-		i.Valid = false
-		return nil
-	}
-
-	// The key isn't set to null
-	var temp int64
-	if err := json.Unmarshal(data, &temp); err != nil {
-		return err
-	}
-	i.Value = temp
-	i.Valid = true
-	return nil
 }
 
 // Open the function.json file and prime the config.
@@ -353,11 +327,11 @@ func (f *Function) DeployConfigAndCode(zip []byte) error {
 	if err != nil {
 		return err
 	}
-
-	if f.Concurrency.Set {
+	if f.Concurrency != nil {
+		reservedConcurrentExecutions := int64(*f.Concurrency)
 		_, err = f.Service.PutFunctionConcurrency(&lambda.PutFunctionConcurrencyInput{
 			FunctionName:                 &f.FunctionName,
-			ReservedConcurrentExecutions: &f.Concurrency.Value,
+			ReservedConcurrentExecutions: &reservedConcurrentExecutions,
 		})
 	} else {
 		_, err = f.Service.DeleteFunctionConcurrency(&lambda.DeleteFunctionConcurrencyInput{
@@ -474,10 +448,11 @@ func (f *Function) Create(zip []byte) error {
 		return err
 	}
 
-	if f.Concurrency.Set {
+	if f.Concurrency != nil {
+		reservedConcurrentExecutions := int64(*f.Concurrency)
 		_, err = f.Service.PutFunctionConcurrency(&lambda.PutFunctionConcurrencyInput{
 			FunctionName:                 &f.FunctionName,
-			ReservedConcurrentExecutions: &f.Concurrency.Value,
+			ReservedConcurrentExecutions: &reservedConcurrentExecutions,
 		})
 		if err != nil {
 			return err
@@ -859,7 +834,7 @@ func (f *Function) configChanged(config *lambda.GetFunctionOutput) bool {
 		Environment      []string
 		KMSKeyArn        string
 		DeadLetterConfig lambda.DeadLetterConfig
-		Concurrency      JSONInt
+		Concurrency      *int
 	}
 
 	localConfig := &diffConfig{
@@ -894,11 +869,8 @@ func (f *Function) configChanged(config *lambda.GetFunctionOutput) bool {
 	}
 
 	if config.Concurrency != nil {
-		remoteConfig.Concurrency = JSONInt{
-			Value: *config.Concurrency.ReservedConcurrentExecutions,
-			Valid: true,
-			Set:   true,
-		}
+		concurrency := int(*config.Concurrency.ReservedConcurrentExecutions)
+		remoteConfig.Concurrency = &concurrency
 	}
 
 	if config.Configuration.KMSKeyArn != nil {

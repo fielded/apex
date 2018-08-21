@@ -155,7 +155,20 @@ func TestFunction_Open_detectConcurrency(t *testing.T) {
 		Log:  log.Log,
 	}
 	fn.Open("")
-	assert.Equal(t, int64(10), fn.Concurrency.Value, "they should be equal")
+	assert.Equal(t, int(10), *fn.Concurrency, "they should be equal")
+
+	fn = &function.Function{
+		Config: function.Config{
+			Memory:  128,
+			Timeout: 3,
+			Role:    "iamrole",
+		},
+		Path: "_fixtures/withoutConcurrency",
+		Name: "foo",
+		Log:  log.Log,
+	}
+	fn.Open("")
+	assert.Nil(t, fn.Concurrency)
 }
 
 func TestFunction_Delete_success(t *testing.T) {
