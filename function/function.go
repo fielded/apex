@@ -102,6 +102,7 @@ type Config struct {
 	Region           string            `json:"region"`
 	Edge             bool              `json:"edge"`
 	Zip              string            `json:"zip"`
+	Concurrency      *int              `json:"concurrency"`
 }
 
 // Function represents a Lambda function, with configuration loaded
@@ -327,6 +328,20 @@ func (f *Function) DeployConfigAndCode(zip []byte) error {
 	if err != nil {
 		return err
 	}
+	if f.Concurrency != nil {
+		reservedConcurrentExecutions := int64(*f.Concurrency)
+		_, err = f.Service.PutFunctionConcurrency(&lambda.PutFunctionConcurrencyInput{
+			FunctionName:                 &f.FunctionName,
+			ReservedConcurrentExecutions: &reservedConcurrentExecutions,
+		})
+	} else {
+		_, err = f.Service.DeleteFunctionConcurrency(&lambda.DeleteFunctionConcurrencyInput{
+			FunctionName: &f.FunctionName,
+		})
+	}
+	if err != nil {
+		return err
+	}
 
 	return f.Update(zip)
 }
@@ -432,6 +447,17 @@ func (f *Function) Create(zip []byte) error {
 
 	if err := f.CreateOrUpdateAlias(f.Alias, *created.Version); err != nil {
 		return err
+	}
+
+	if f.Concurrency != nil {
+		reservedConcurrentExecutions := int64(*f.Concurrency)
+		_, err = f.Service.PutFunctionConcurrency(&lambda.PutFunctionConcurrencyInput{
+			FunctionName:                 &f.FunctionName,
+			ReservedConcurrentExecutions: &reservedConcurrentExecutions,
+		})
+		if err != nil {
+			return err
+		}
 	}
 
 	f.Log.WithFields(log.Fields{
@@ -809,6 +835,7 @@ func (f *Function) configChanged(config *lambda.GetFunctionOutput) bool {
 		Environment      []string
 		KMSKeyArn        string
 		DeadLetterConfig lambda.DeadLetterConfig
+		Concurrency      *int
 	}
 
 	localConfig := &diffConfig{
@@ -824,6 +851,7 @@ func (f *Function) configChanged(config *lambda.GetFunctionOutput) bool {
 			Subnets:        f.VPC.Subnets,
 			SecurityGroups: f.VPC.SecurityGroups,
 		},
+		Concurrency: f.Concurrency,
 	}
 
 	if f.DeadLetterARN != "" {
@@ -839,6 +867,11 @@ func (f *Function) configChanged(config *lambda.GetFunctionOutput) bool {
 		Role:        *config.Configuration.Role,
 		Runtime:     *config.Configuration.Runtime,
 		Handler:     *config.Configuration.Handler,
+	}
+
+	if config.Concurrency != nil {
+		concurrency := int(*config.Concurrency.ReservedConcurrentExecutions)
+		remoteConfig.Concurrency = &concurrency
 	}
 
 	if config.Configuration.KMSKeyArn != nil {

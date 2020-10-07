@@ -121,3 +121,9 @@ If your function needs to be deployed different region from the whole project.
 If your function is for Lambda@Edge. The Edge function needs to be deployed on N. Virginia region, excluding all environment variables.
 
 - type: `boolean`
+
+### concurrency
+
+Concurrent execution limit reserved for this function. Skip this key to remove concurrent execution limits.
+
+- type: `int`
